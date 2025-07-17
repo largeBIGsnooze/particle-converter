@@ -365,8 +365,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         15.0,
@@ -471,8 +471,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         15.0,
@@ -577,8 +577,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         8.0,
@@ -683,8 +683,8 @@
         25.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         10.0,
@@ -789,8 +789,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         10.0,
@@ -895,8 +895,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         10.0,
@@ -1001,8 +1001,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         10.0,
@@ -1107,8 +1107,8 @@
         30.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         8.0,
@@ -1213,8 +1213,8 @@
         25.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         -8.0,
@@ -1319,8 +1319,8 @@
         20.0
       ],
       "radial_velocity": [
-        1.0,
-        2.0
+        0.0,
+        0.0
       ],
       "azimuthal_tangential_velocity": [
         10.0,
@@ -1356,8 +1356,13 @@
         ],
         "type": "constant"
       },
-      "op": "to_point_in_emitter_space",
+      "op": "to_point_in_effect_space",
       "start_delay": [
+        0.0,
+        0.0
+      ],
+      "point": [
+        0.0,
         0.0,
         0.0
       ]
@@ -1404,6 +1409,10 @@
         0.0,
         0.0
       ],
+      "particle_time_offset": [
+        0.7,
+        0.7
+      ],
       "width_change_rate": [
         200.0,
         200.0
@@ -1428,6 +1437,10 @@
       "height_change_rate": [
         12000.0,
         12000.0
+      ],
+      "particle_time_duration": [
+        0.7,
+        0.7
       ]
     },
     {
@@ -1458,10 +1471,19 @@
         ],
         "type": "constant"
       },
-      "op": "to_point_in_emitter_space",
+      "op": "to_point_in_effect_space",
       "start_delay": [
         0.0,
         0.0
+      ],
+      "point": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "particle_time_offset": [
+        0.6,
+        0.6
       ]
     },
     {
@@ -1475,10 +1497,19 @@
         ],
         "type": "constant"
       },
-      "op": "to_point_in_emitter_space",
+      "op": "to_point_in_effect_space",
       "start_delay": [
         0.0,
         0.0
+      ],
+      "point": [
+        0.0,
+        0.0,
+        0.0
+      ],
+      "particle_time_offset": [
+        1.0,
+        1.0
       ]
     },
     {

@@ -28,6 +28,9 @@ class EmitterType(Enum):
     def parse(cls, emitter_type: str) -> "EmitterType":
         return cls[str(emitter_type)]
 
+class ChangeDurationContext(Enum):
+    PARTICLE_TIME_ELAPSED = auto()
+    MODIFIER_TIME_ELAPSED = auto()
 
 class EmitRateBehavior(Enum):
     SQUARE_WAVE = auto()
@@ -97,6 +100,23 @@ class ModifierPropertyType(Enum):
     WIDTH_SCALE = auto()
     HEIGHT_SCALE = auto()
     WIDTH_AND_HEIGHT = auto()
+
+
+class TextureAnimationFirstFrames(Enum):
+    FIRST = auto()
+    SEQUENTIAL = auto()
+    RANDOM = auto()
+
+    @classmethod
+    def parse(cls, frame_type: str) -> "TextureAnimationFirstFrames":
+        return cls[str(frame_type)]
+
+
+class TextureAnimationNextFrames(Enum):
+    SEQUENTIAL_LOOP = auto()
+    SEQUENTIAL_NO_LOOP = auto()
+    RANDOM = auto()
+    PING_PONG_LOOP = auto()
 
 
 class Op(Enum):
@@ -237,8 +257,8 @@ class Billboard:
     texture_1: Optional[str] = None
     texture_animation_fps: Optional[Vector2f] = None
     texture_animation: Optional[str] = None
-    texture_animation_first_frame: str = "random"
-    texture_animation_next_frame: str = "random"
+    texture_animation_first_frame: Optional[TextureAnimationFirstFrames] = TextureAnimationFirstFrames.RANDOM
+    texture_animation_next_frame: Optional[TextureAnimationNextFrames] = TextureAnimationNextFrames.RANDOM
     initial_distortion_scalar: Optional[Vector2f] = None
     random_flip_texture_vertical_chance: Optional[float] = None
     random_flip_texture_horizontal_chance: Optional[float] = None
@@ -356,12 +376,12 @@ class Modifier:
     force: Optional[ModifierForce] = None
     axis_of_rotation: Optional[Vector3f] = None
     axis_origin: Optional[Vector3f] = None
-    radius: Optional[float] = None
+    radius: Optional[Vector2f] = None
     property_type: Optional[ModifierPropertyType] = None
     op: Optional[Op] = None
     property_value: Optional[None] = None
     coefficient_generator: Optional[CoefficientGenerator] = None
-    change_duration_context: Union[Optional[None], str] = None
+    change_duration_context: Union[Optional[ChangeDurationContext]] = None
     change_duration: Optional[Vector2f] = None
     begin_color: Optional[str] = None
     end_color: Optional[str] = None
@@ -377,6 +397,7 @@ class Modifier:
     oscillate_duration: Optional[Vector2f] = None
     height_change_rate: Optional[Vector2f] = None
     particle_time_duration: Optional[Vector2f] = None
+    duration: Optional[Vector2f] = None
     is_random_jitter_shared: Optional[bool] = None
     tolerance: Optional[Vector2f] = None
 

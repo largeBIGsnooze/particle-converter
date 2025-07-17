@@ -7,11 +7,13 @@ from typing import Dict, Any, Optional, Union
 from dataclasses import is_dataclass
 from enum import Enum
 from src import classes as c
+import colorama
+from colorama import Fore
 
 
 class ParticleException(Exception):
     def __init__(self, message):
-        super().__init__(f"Failed to parse.\n{message}")
+        super().__init__(Fore.RED + f"Failed to parse.\n{message}")
 
 
 class SinsParticleFormatException(ParticleException):
@@ -108,9 +110,7 @@ class SinsParticle:
 
             if int.from_bytes(self.f.read(3), byteorder="big") == 0x42494E:
                 self.f.close()
-                raise SinsParticleException(
-                    "Convert it to TXT format before running this program."
-                )
+                raise SinsParticleException("Convert it to TXT format before running this program.")
 
             self.f = open(self.particle_path, "r", encoding="utf-8")
 
@@ -234,7 +234,7 @@ class SinsParticle:
 
             root.particle.max_duration = c.Vector2f(*[emitter["ParticleLifeTime"]] * 2)
 
-            if emitter["TotalLifeTime"] > 0:
+            if not emitter["HasInfiniteLifeTime"]:
                 root.emit_duration = c.Vector2f(*[emitter["TotalLifeTime"]] * 2)
 
             root.particle.color = emitter["ParticleStartColor"]
@@ -261,18 +261,17 @@ class SinsParticle:
                 )
 
             if "AngleVariance" in emitter:
-                root.angle_variance = c.Vector2f(
-                    emitter["AngleVariance"], emitter["AngleVariance"]
-                )
+                root.angle_variance = c.Vector2f(*[emitter["AngleVariance"]] * 2)
 
-            root.particle.billboard.rotation = c.Vector2f(
-                emitter["ParticleMinStartRotation"],
-                emitter["ParticleMaxStartRotation"],
-            )
-            root.particle.billboard.rotation_speed = c.Vector2f(
-                emitter["ParticleMinStartAngularSpeed"],
-                emitter["ParticleMaxStartAngularSpeed"],
-            )
+            if emitter["ParticlesRotate"]:
+                root.particle.billboard.rotation = c.Vector2f(
+                    emitter["ParticleMinStartRotation"],
+                    emitter["ParticleMaxStartRotation"],
+                )
+                root.particle.billboard.rotation_speed = c.Vector2f(
+                    emitter["ParticleMinStartAngularSpeed"],
+                    emitter["ParticleMaxStartAngularSpeed"],
+                )
 
             rotation_type = c.RotationType.parse(emitter["RotationDirectionType"])
             if rotation_type == c.RotationType.RANDOM:
@@ -298,21 +297,21 @@ class SinsParticle:
                 root.particle.billboard[f"texture_{i}"] = texture
 
             root.particle.billboard.texture_animation = emitter["textureAnimationName"]
+
+            texture_animation_first_frame = c.TextureAnimationFirstFrames.parse(
+                SinsParticle._normalize_animation_spawn_type(emitter["textureAnimationSpawnType"])
+            )
+
+            root.particle.billboard.texture_animation_first_frame = texture_animation_first_frame
             root.particle.billboard.texture_animation_fps = c.Vector2f(
                 *[emitter["textureAnimationOnParticleFPS"]] * 2
             )
 
             if root.type == c.EmitterType.RING:
 
-                root.radius_x = c.Vector2f(
-                    emitter["RingRadiusXMin"], emitter["RingRadiusXMax"]
-                )
-                root.radius_y = c.Vector2f(
-                    emitter["RingRadiusYMin"], emitter["RingRadiusYMax"]
-                )
-                root.angle_range = c.Vector2f(
-                    emitter["SpawnAngleStart"], emitter["SpawnAngleStop"]
-                )
+                root.radius_x = c.Vector2f(emitter["RingRadiusXMin"], emitter["RingRadiusXMax"])
+                root.radius_y = c.Vector2f(emitter["RingRadiusYMin"], emitter["RingRadiusYMax"])
+                root.angle_range = c.Vector2f(emitter["SpawnAngleStart"], emitter["SpawnAngleStop"])
 
                 root.tangential_velocity = c.Vector2f(
                     *[emitter["ParticleMaxStartSpeedTangential"]] * 2
@@ -320,11 +319,18 @@ class SinsParticle:
 
                 root.use_edge = False
                 root.normal_offset = c.Vector2f(0, 0)
-                root.normal_velocity = c.Vector2f(
-                    *[emitter["ParticleMaxStartSpeedRingNormal"]] * 2
+                root.normal_velocity = c.Vector2f(*[emitter["ParticleMaxStartSpeedRingNormal"]] * 2)
+                root.radial_velocity = c.Vector2f(
+                    emitter["ParticleMinStartLinearSpeed"],
+                    emitter["ParticleMaxStartLinearSpeed"],
                 )
-                root.radial_velocity = c.Vector2f(0, 0)
                 root.angle_range_behavior = c.AngleRangeBehavior.RANDOM
+
+                if not emitter["isSpawnAngleRandom"]:
+                    root.angle_range_behavior = c.AngleRangeBehavior.SEQUENCE_LOOP
+                    root.angle_range_sequence_size = emitter[
+                        "nonRandomSpawnLoopEmittedParticleCount"
+                    ]
 
             if root.type == c.EmitterType.SPHERE:
                 for key in ("X", "Y", "Z"):
@@ -338,8 +344,7 @@ class SinsParticle:
                 )
 
                 root.polar_tangential_velocity = c.Vector2f(
-                    emitter["ParticleMaxStartSpeedPolarTangential"],
-                    emitter["ParticleMaxStartSpeedPolarTangential"],
+                    *[emitter["ParticleMaxStartSpeedPolarTangential"]] * 2
                 )
                 root.latitude_angle_range = c.Vector2f(
                     emitter["SpawnAngleLatitudinalStart"],
@@ -350,7 +355,10 @@ class SinsParticle:
                     emitter["SpawnAngleLongitudinalStop"],
                 )
 
-                root.radial_velocity = c.Vector2f(1, 2)
+                root.radial_velocity = c.Vector2f(
+                    emitter["ParticleMinStartLinearSpeed"],
+                    emitter["ParticleMaxStartLinearSpeed"],
+                )
                 root.use_surface = False
 
             self.emitters.append(self.__serialize__(root))
@@ -363,7 +371,7 @@ class SinsParticle:
                 id=modifier_id,
                 name=modifier["Name"] or affector_type,
                 type=c.ModifierType.parse(
-                    SinsParticle._normalize_affector_type(affector_type).upper()
+                    SinsParticle._normalize_affector_type(affector_type)
                 ),
             )
 
@@ -371,7 +379,7 @@ class SinsParticle:
                 root.type = c.ModifierType.ROTATE
                 root.axis_of_rotation = c.Vector3f(*modifier["AxisOfRotation"])
                 root.axis_origin = c.Vector3f(*modifier["AxisOrigin"])
-                root.radius = modifier["Radius"]
+                root.radius = c.Vector2f(*[modifier["Radius"]] * 2)
                 root.angular_velocity = c.Vector2f(*[modifier["AngularVelocity"]] * 2)
             if root.type == c.ModifierType.KILL:
                 root.point = c.Vector3f(*modifier["Point"])
@@ -380,15 +388,30 @@ class SinsParticle:
             if root.type == c.ModifierType.COLOR:
                 root.begin_color = modifier["StartColor"]
                 root.end_color = modifier["EndColor"]
+                root.will_oscillate = True
                 root.change_duration = c.Vector2f(*[modifier["TransitionPeriod"]] * 2)
-                root.change_duration_context = "particle_time_elapsed"
+                root.change_duration_context = c.ChangeDurationContext.PARTICLE_TIME_ELAPSED
+            if root.type == c.ModifierType.SIZE:
+                root.width_change_rate = c.Vector2f(*[modifier["WidthInflateRate"]] * 2)
+                root.height_change_rate = c.Vector2f(*[modifier["HeightInflateRate"]] * 2)
             if root.type == c.ModifierType.SIZE_OSCILLATOR:
-                pass
+                root.type = c.ModifierType.SIZE
+                root.width_change_rate = c.Vector2f(*[modifier["BeginSizeX"]] * 2)
+                root.height_change_rate = c.Vector2f(*[modifier["BeginSizeY"]] * 2)
+                root.width_stop = c.Vector2f(*[modifier["EndSizeX"]] * 2)
+                root.height_stop = c.Vector2f(*[modifier["EndSizeY"]] * 2)
             if root.type == c.ModifierType.LINEAR_FORCE_IN_DIRECTION:
                 root.type = c.ModifierType.PUSH
                 root.direction = c.Vector3f(*modifier["Direction"])
                 root.force = c.ModifierForce()
                 root.force.range = c.Vector2f(modifier["MinForce"], modifier["MaxForce"])
+            if root.type == c.ModifierType.PUSH:
+                root.force = c.ModifierForce()
+                root.force.type = c.ForceType.CONSTANT
+                root.force.range = c.Vector2f(modifier["MinForce"] / 25, modifier["MaxForce"] / 25)
+                root.op = c.Op.TO_POINT_IN_EFFECT_SPACE  # is it?
+                if "Point" in modifier:
+                    root.point = c.Vector3f(*modifier["Point"])
             if root.type == c.ModifierType.JITTER:
                 root.force = c.ModifierForce()
                 root.force.type = c.ForceType.RANDOM
@@ -396,30 +419,26 @@ class SinsParticle:
                 root.op = c.Op.RANDOM_JITTER
                 if modifier["UseCommonForce"]:
                     root.is_random_jitter_shared = modifier["UseCommonForce"]
-            if root.type == c.ModifierType.PUSH:
-                root.force = c.ModifierForce()
-                root.force.type = c.ForceType.CONSTANT
-                root.force.range = c.Vector2f(
-                    modifier["MinForce"] / 25, modifier["MaxForce"] / 25
-                )
-                root.op = c.Op.TO_POINT_IN_EMITTER_SPACE
-            if root.type == c.ModifierType.SIZE:
-                root.width_change_rate = c.Vector2f(*[modifier["WidthInflateRate"]] * 2)
-                root.height_change_rate = c.Vector2f(*[modifier["HeightInflateRate"]] * 2)
-            # else:
+                root.type = c.ModifierType.PUSH
+
             root.start_delay = c.Vector2f(*[modifier["StartTime"]] * 2)
 
+            if modifier["UseOldParticleAffectThreshold"]:
+                root.particle_time_offset = c.Vector2f(
+                    *[modifier["OldParticleAffectThreshold"]] * 2
+                )
+            if modifier["UseYoungParticleAffectThreshold"]:
+                root.particle_time_duration = c.Vector2f(
+                    *[modifier["YoungParticleAffectThreshold"]] * 2
+                )
             if not modifier["HasInfiniteLifeTime"]:
-                root.particle_time_duration = c.Vector2f(*[modifier["TotalLifeTime"]] * 2)
-                print(root.particle_time_duration)
+                root.duration = c.Vector2f(*[modifier["TotalLifeTime"]] * 2)
 
             self.modifiers.append(self.__serialize__(root))
 
     def _build_modifier_to_emitter_attachments(self) -> None:
 
-        for attacher_id, affector in enumerate(
-            self.collector["ParticleSimulation"]["Affectors"]
-        ):
+        for attacher_id, affector in enumerate(self.collector["ParticleSimulation"]["Affectors"]):
             contents = affector["AffectorContents"]
 
             if "AttachedEmitters" in contents:
@@ -435,10 +454,7 @@ class SinsParticle:
                     for attachee_id, emitter in enumerate(
                         self.collector["ParticleSimulation"]["Emitters"]
                     ):
-                        if (
-                            emitter["EmitterContents"]["Name"] == attached
-                            and not is_fade_affector
-                        ):
+                        if emitter["EmitterContents"]["Name"] == attached and not is_fade_affector:
                             self.modifier_to_emitter_attachments.append(
                                 self.__serialize__(c.Attacher(attacher_id, attachee_id))
                             )
@@ -475,7 +491,7 @@ class SinsParticle:
     @staticmethod
     def _normalize_texture_name(texture_name: str) -> str:
         return os.path.basename(
-            texture_name.strip('"').lower().replace(".tga", "").replace(".dds", "")
+            texture_name.strip('"').lower().replace(".tga", "").replace(".dds", "").replace("-", "_")
         )
 
     def _parse_emitter(self, emitter: Dict[str, Any], depth: int) -> None:
@@ -502,9 +518,7 @@ class SinsParticle:
                 emitter.setdefault("Textures", [])
                 for _ in range(int(value)):
                     self.curr_line = self._next()
-                    texture_name = SinsParticle._normalize_texture_name(
-                        self._curr_line_items()[1]
-                    )
+                    texture_name = SinsParticle._normalize_texture_name(self._curr_line_items()[1])
                     if texture_name != "":
                         texture_name += "_clr"
                     emitter["Textures"].append(texture_name)
@@ -519,9 +533,7 @@ class SinsParticle:
 
             emitter[key] = value
             if "textureAnimationName" in self.curr_line and value:
-                emitter["textureAnimationName"] = (
-                    f"{value.lower().split('.')[0]}.texture_animation"
-                )
+                emitter["textureAnimationName"] = f"{value.lower().split('.')[0]}.texture_animation"
 
             self.curr_line = self._next()
 
@@ -535,16 +547,24 @@ class SinsParticle:
     @staticmethod
     def _normalize_affector_type(affector_type: str) -> str:
         return {
-            "LinearForceToPoint": "push",
-            "Jitter": "jitter",
-            "LinearInflate": "size",
-            "SizeOscillator": "size_oscillator",
-            "Fade": "fade",
-            "ColorOscillator": "color",
-            "LinearForceInDirection": "linear_force_in_direction",
-            "RotateAboutAxis": "rotate_about_axis",
-            "KillParticlesNearPoint": "kill",
+            "LinearForceToPoint": "PUSH",
+            "Jitter": "JITTER",
+            "LinearInflate": "SIZE",
+            "SizeOscillator": "SIZE_OSCILLATOR",
+            "Fade": "FADE",
+            "ColorOscillator": "COLOR",
+            "LinearForceInDirection": "LINEAR_FORCE_IN_DIRECTION",
+            "RotateAboutAxis": "ROTATE_ABOUT_AXIS",
+            "KillParticlesNearPoint": "KILL",
         }.get(affector_type, affector_type)
+
+    @staticmethod
+    def _normalize_animation_spawn_type(spawn_type: str) -> str:
+        return {
+            "SequentialFrames": "SEQUENTIAL",
+            "RandomFrames": "RANDOM",
+            "FirstFrames": "FIRST",
+        }.get(spawn_type, spawn_type)
 
     def _delete_fade_affectors(self) -> list:
         return list(filter(lambda x: x["type"] != "fade", self.modifiers))
@@ -560,18 +580,23 @@ class SinsParticle:
             self.line_number += 1
         return self.curr_line
 
-    def save(self, save_path: str = "./examples/output/test.particle_effect") -> None:
+    def save(self, save_path: str = "examples/Ability_CombatNanites.particle_effect") -> None:
         if self.file:
             with open(save_path, "w") as f:
                 json.dump(self.__serialize__(self.file), f, indent=2)
 
 
 if __name__ == "__main__":
+    # parser = SinsParticle(particle_path="examples/Ability_CombatNanites.particle").parse()
+    # parser.save()
+
+    colorama.init(autoreset=True)
+
     try:
         exe_path = os.path.dirname(sys.executable)
         out_path = os.path.join(exe_path, "out")
         if len(sys.argv) < 2:
-            print("Drop a Sins 1 .particle file\n")
+            print(Fore.RED + "Drop a Sins 1 .particle or a .texanim file\n")
             os.system("pause")
             sys.exit(1)
 
@@ -584,14 +609,14 @@ if __name__ == "__main__":
             if file.endswith(".particle"):
                 target_path = os.path.join(out_path, "effects")
                 extension = ".particle_effect"
-                print(f"{file_name} -> {name + extension}")
             elif file.endswith(".texanim"):
                 target_path = os.path.join(out_path, "texture_animations")
                 extension = ".texture_animation"
-                print(f"{file_name} -> {name + extension}")
             else:
                 print(f"Skipping: {name}")
                 continue
+
+            print(Fore.WHITE + f"{file_name} -> {name + extension}")
             os.makedirs(target_path, exist_ok=True)
             parser = SinsParticle(particle_path=file).parse()
             parser.save(os.path.join(target_path, name + extension))
