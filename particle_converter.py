@@ -247,14 +247,13 @@ class SinsParticle:
 
             root.is_visible = emitter["Enabled"]
 
-            if root.name in self.fade_values:
-                fade = self.fade_values[root.name]
-                root.particle.fade_in_time = c.Vector2f(
-                    *[fade["fade_in_time"] if fade["fade_in_enabled"] else 0.0] * 2
-                )
-                root.particle.fade_out_time = c.Vector2f(
-                    *[fade["fade_out_time"] if fade["fade_out_enabled"] else 0.0] * 2
-                )
+            for _, fade_value in self.fade_values.items():
+                if root.name in fade_value:
+                    fade = self.fade_values[_][root.name]
+                    if fade["do_fade_in"]:
+                        root.particle.fade_in_time = c.Vector2f(*[fade["fade_in_time"]] * 2)
+                    if fade["do_fade_out"]:
+                        root.particle.fade_out_time = c.Vector2f(*[fade["fade_out_time"]] * 2)
 
             if "AngleVariance" in emitter:
                 root.angle_variance = c.Vector2f(*[emitter["AngleVariance"]] * 2)
@@ -271,16 +270,19 @@ class SinsParticle:
 
             rotation_type = c.RotationType.parse(emitter["RotationDirectionType"])
             if rotation_type == c.RotationType.RANDOM:
-                root.particle.billboard.rotation_speed.min = -abs(
-                    root.particle.billboard.rotation_speed.min
+                root.particle.billboard.rotation_speed = c.Vector2f(
+                    -abs(root.particle.billboard.rotation_speed.max),
+                    abs(root.particle.billboard.rotation_speed.max),
                 )
             elif rotation_type == c.RotationType.COUNTER_CLOCKWISE:
-                root.particle.billboard.rotation_speed.max = -abs(
-                    root.particle.billboard.rotation_speed.max
+                root.particle.billboard.rotation_speed = c.Vector2f(
+                    -abs(root.particle.billboard.rotation_speed.min),
+                    -abs(root.particle.billboard.rotation_speed.max),
                 )
             elif rotation_type == c.RotationType.CLOCKWISE:
-                root.particle.billboard.rotation_speed.max = abs(
-                    root.particle.billboard.rotation_speed.max
+                root.particle.billboard.rotation_speed = c.Vector2f(
+                    abs(root.particle.billboard.rotation_speed.min),
+                    abs(root.particle.billboard.rotation_speed.max),
                 )
 
             if root.type == c.EmitterType.POINT:
@@ -307,9 +309,7 @@ class SinsParticle:
 
                 root.radius_x = c.Vector2f(emitter["RingRadiusXMin"], emitter["RingRadiusXMax"])
                 root.radius_y = c.Vector2f(emitter["RingRadiusYMin"], emitter["RingRadiusYMax"])
-                root.angle_range = c.Vector2f(
-                    emitter["SpawnAngleStart"], emitter["SpawnAngleStop"]
-                )
+                root.angle_range = c.Vector2f(emitter["SpawnAngleStart"], emitter["SpawnAngleStop"])
 
                 root.tangential_velocity = c.Vector2f(
                     *[emitter["ParticleMaxStartSpeedTangential"]] * 2
@@ -317,9 +317,7 @@ class SinsParticle:
 
                 root.use_edge = False
                 root.normal_offset = c.Vector2f(0, 0)
-                root.normal_velocity = c.Vector2f(
-                    *[emitter["ParticleMaxStartSpeedRingNormal"]] * 2
-                )
+                root.normal_velocity = c.Vector2f(*[emitter["ParticleMaxStartSpeedRingNormal"]] * 2)
                 root.radial_velocity = c.Vector2f(
                     emitter["ParticleMinStartLinearSpeed"],
                     emitter["ParticleMaxStartLinearSpeed"],
@@ -391,20 +389,21 @@ class SinsParticle:
                 root.end_color = modifier["EndColor"]
                 root.will_oscillate = True
                 root.change_duration = c.Vector2f(*[modifier["TransitionPeriod"]] * 2)
-                root.change_duration_context = c.ChangeDurationContext.PARTICLE_TIME_ELAPSED
+            if root.type == c.ModifierType.SIZE_OSCILLATOR:
+                root.type = c.ModifierType.SIZE
+                root.width_stop = c.Vector2f(modifier["BeginSizeX"], modifier["EndSizeX"])
+                root.height_stop = c.Vector2f(modifier["BeginSizeY"], modifier["EndSizeY"])
             if root.type == c.ModifierType.SIZE:
-                root.width_change_rate = c.Vector2f(*[modifier["WidthInflateRate"]] * 2)
-                root.height_change_rate = c.Vector2f(*[modifier["HeightInflateRate"]] * 2)
+                if {"WidthInflateRate", "HeightInflateRate"} <= modifier.keys():
+                    root.width_change_rate = c.Vector2f(*[modifier["WidthInflateRate"]] * 2)
+                    root.height_change_rate = c.Vector2f(*[modifier["HeightInflateRate"]] * 2)
+                else:
+                    root.width_change_rate = c.Vector2f(100, 100)
+                    root.height_change_rate = c.Vector2f(100, 100)
             if root.type == c.ModifierType.LINEAR_BOUNDED_INFLATE:
                 root.type = c.ModifierType.SIZE
                 root.width_stop = c.Vector2f(modifier["MinWidth"], modifier["MaxWidth"])
                 root.height_stop = c.Vector2f(modifier["MinHeight"], modifier["MaxHeight"])
-            if root.type == c.ModifierType.SIZE_OSCILLATOR:
-                root.type = c.ModifierType.SIZE
-                # root.width_change_rate = c.Vector2f(*[modifier["BeginSizeX"]] * 2)
-                # root.height_change_rate = c.Vector2f(*[modifier["BeginSizeY"]] * 2)
-                # root.width_stop = c.Vector2f(*[modifier["EndSizeX"]] * 2)
-                # root.height_stop = c.Vector2f(*[modifier["EndSizeY"]] * 2)
             if root.type == c.ModifierType.LINEAR_FORCE_IN_DIRECTION:
                 root.type = c.ModifierType.PUSH
                 root.direction = c.Vector3f(*modifier["Direction"])
@@ -442,7 +441,7 @@ class SinsParticle:
             self.modifiers.append(self.__serialize__(root))
 
     def _build_modifier_to_emitter_attachments(self) -> None:
-
+        fade_counter = 0
         for attacher_id, affector in enumerate(self.collector["ParticleSimulation"]["Affectors"]):
             contents = affector["AffectorContents"]
 
@@ -450,12 +449,14 @@ class SinsParticle:
                 is_fade_affector = affector["AffectorType"].lower() == "fade"
                 for attached in contents["AttachedEmitters"]:
                     if is_fade_affector:
-                        self.fade_values[attached] = {
-                            "fade_in_enabled": contents["DoFadeIn"],
-                            "fade_out_enabled": contents["DoFadeOut"],
+                        self.fade_values[fade_counter] = {}
+                        self.fade_values[fade_counter][attached] = {
+                            "do_fade_in": contents["DoFadeIn"],
+                            "do_fade_out": contents["DoFadeOut"],
                             "fade_in_time": contents["FadeInTime"],
                             "fade_out_time": contents["FadeOutTime"],
                         }
+                        fade_counter += 1
                     for attachee_id, emitter in enumerate(
                         self.collector["ParticleSimulation"]["Emitters"]
                     ):
@@ -542,9 +543,7 @@ class SinsParticle:
 
             emitter[key] = value
             if "textureAnimationName" in self.curr_line and value:
-                emitter["textureAnimationName"] = (
-                    f"{value.lower().split('.')[0]}.texture_animation"
-                )
+                emitter["textureAnimationName"] = f"{value.lower().split('.')[0]}.texture_animation"
 
             self.curr_line = self._next()
 

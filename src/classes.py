@@ -296,8 +296,8 @@ class Particle:
     max_duration: Optional[Vector2f] = None
     type: Union[Optional[ParticleType], str] = None
     initial_alpha: Optional[Vector2f] = None
-    fade_in_time: Optional[Vector2f] = Vector2f(1.0, 1.0)
-    fade_out_time: Optional[Vector2f] = Vector2f(1.0, 1.0)
+    fade_in_time: Optional[Vector2f] = Vector2f(0.0, 0.0)
+    fade_out_time: Optional[Vector2f] = Vector2f(0.0, 0.0)
     light: Optional[Light] = None
     external_color: Optional[ExternalColor] = None
     camera_offset: Optional[Vector2f] = None

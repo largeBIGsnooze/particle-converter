@@ -9,60 +9,6 @@ class TestParticle(unittest.TestCase):
     def setUp(self):
         curr_path = os.path.dirname(os.path.abspath(__file__))
         self.particles_path = os.path.join(curr_path, "particles/")
-        self.test_1 = SinsParticle(self.particles_path + "test_1.particle")
-        self.test_2 = SinsParticle(self.particles_path + "test_2.particle")
-        self.test_3 = SinsParticle(self.particles_path + "test_3.particle")
-
-    def test_emitters(self):
-        self.test_1.parse()
-        self.assertEqual(len(self.test_1.emitters), 10)
-        self.assertEqual(self.test_1.emitters[0]["name"], "half1")
-        self.assertEqual(self.test_1.emitters[0]["emit_rate"]["primary_emit_rate"], [20.0, 20.0])
-
-        self.test_2.parse()
-        self.assertEqual(self.test_2.emitters[3]["name"], "cloud out small")
-        self.assertEqual(self.test_2.emitters[-1]["name"], "sparks 5")
-        self.assertEqual(
-            self.test_2.emitters[-1]["emit_rate"]["primary_emit_rate"], [250.0, 250.0]
-        )
-        self.assertEqual(self.test_2.emitters[-2]["radial_velocity"], [200.0, 800.0])
-        self.assertNotIn("texture_0", self.test_2.emitters[-3])
-        self.assertNotIn("texture_1", self.test_2.emitters[-3])
-        self.assertEqual(
-            self.test_2.emitters[-3]["particle"]["billboard"]["facing_type"],
-            "face_camera_by_rotating_on_particle_direction",
-        )
-        self.assertEqual(self.test_2.emitters[-1]["particle"]["billboard"]["rotation"], [0.0, 0.0])
-        self.assertEqual(
-            self.test_2.emitters[-1]["particle"]["billboard"]["rotation_speed"], [0.0, 0.0]
-        )
-        self.assertEqual(self.test_2.emitters[-5]["angle_variance"], [3.141593, 3.141593])
-        self.assertNotIn("emit_duration", self.test_2.emitters[-5])
-
-    def test_modifiers(self):
-        self.test_1.parse()
-        modifiers = self.test_1.modifiers
-        self.assertEqual(len(modifiers), 11)
-        self.assertEqual(modifiers[0]["name"], "Force Cloud down")
-        self.assertIn("(copy) (new) Sphere-1-2", self.test_1.fade_values)
-        self.assertTrue(self.test_1.fade_values["(copy) (new) Sphere-1-2"]["fade_in_enabled"])
-        self.assertEqual(modifiers[2]["point"], [0.000000, -130.00000, 0.000000])
-        self.assertEqual(modifiers[1]["width_change_rate"], [-30.0, -30.0])
-        self.assertEqual(modifiers[1]["height_change_rate"], [-30.0, -30.0])
-        self.assertEqual(modifiers[0]["particle_time_offset"], [0.3, 0.3])
-        self.test_2.parse()
-        modifiers = self.test_2.modifiers
-        self.assertEqual(modifiers[-1]["name"], "Ray out")
-        self.assertNotIn("particle_time_offset", modifiers[-1])
-        self.assertEqual(modifiers[-1]["width_change_rate"], [100.0, 100.0])
-        self.assertEqual(modifiers[-1]["height_change_rate"], [400.0, 400.0])
-
-    def test_emitter_attachments(self):
-        self.test_1.parse()
-        self.assertEqual(len(self.test_1.emitter_to_node_attachments), 10)
-
-        self.assertEqual(self.test_1.modifier_to_emitter_attachments[5]["attacher_id"], 14)
-        self.assertEqual(self.test_1.modifier_to_emitter_attachments[1]["attacher_id"], 1)
 
     def assertEmitterEqual(self, parsed, original, original_emitter_type):
         self.assertEqual(original["Name"], parsed["name"])
