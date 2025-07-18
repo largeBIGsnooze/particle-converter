@@ -86,6 +86,7 @@ class ModifierType(Enum):
     SIZE_OSCILLATOR = auto()
     LINEAR_FORCE_IN_DIRECTION = auto()
     ROTATE_ABOUT_AXIS = auto()
+    LINEAR_BOUNDED_INFLATE = auto()
 
     @classmethod
     def parse(cls, modifier_type: str) -> "ModifierType":
@@ -362,7 +363,7 @@ class ModifierForce:
 
 @dataclass
 class CoefficientGenerator:
-    type: Optional[None] = None
+    type: Optional[ForceType] = ForceType.CONSTANT
     range: Optional[Vector2f] = None
     easing_function: Optional[None] = None
     easing_values: Optional[Vector2f] = None

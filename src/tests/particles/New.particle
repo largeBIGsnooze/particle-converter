@@ -1,0 +1,40 @@
+﻿TXT2
+SinsArchiveVersion 194
+ParticleSimulation
+	HasInfiniteLifeTime FALSE
+	TotalLifeTime 10.000000
+	NumEmitters 0
+	NumAffectors 2
+	AffectorType "LinearBoundedInflate"
+	AffectorContents
+		Name "(new) LinearBoundedInflate-1"
+		Enabled TRUE
+		StartTime 0.000000
+		HasInfiniteLifeTime TRUE
+		TotalLifeTime 0.000000
+		UseYoungParticleAffectThreshold FALSE
+		YoungParticleAffectThreshold 0.000000
+		UseOldParticleAffectThreshold FALSE
+		OldParticleAffectThreshold 0.000000
+		AffectAttachedParticles TRUE
+		numAttachedEmitters 0
+		MinWidth 0.000000
+		MaxWidth 0.000000
+		MinHeight 0.000000
+		MaxHeight 0.000000
+	AffectorType "LinearInflate"
+	AffectorContents
+		Name "(new) LinearInflate-1"
+		Enabled TRUE
+		StartTime 0.000000
+		HasInfiniteLifeTime TRUE
+		TotalLifeTime 0.000000
+		UseYoungParticleAffectThreshold FALSE
+		YoungParticleAffectThreshold 0.000000
+		UseOldParticleAffectThreshold FALSE
+		OldParticleAffectThreshold 0.000000
+		AffectAttachedParticles TRUE
+		numAttachedEmitters 0
+		WidthInflateRate 1.000000
+		HeightInflateRate 1.000000
+	length 0.000000
