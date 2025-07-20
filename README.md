@@ -2,6 +2,8 @@
 
 This program allows you to convert any Sins of a Solar Empire `.particle` into a fully compatible Sins 2 particle with a simple drag-and-drop! Also supports `.texanim`
 
+<img src="./demo/cmd.png">
+
 ---
 
 ## Installation
@@ -35,6 +37,8 @@ pyinstaller particle_converter.spec
 The files are then saved to:
 - `<executable>/out/effects` for `.particle` (`.particle_effect`)
 - `<executable>/out/texture_animations` for `.texanim` (`.texture_animation`)
+
+---
 
 ## Demo
 
