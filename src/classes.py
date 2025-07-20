@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union
+from typing import List, Dict, Optional, Union, Any
 
 
 class ParticleFacing(Enum):
@@ -134,6 +134,12 @@ class Op(Enum):
     NEAR_POINT = auto()
 
 
+class MeshShader(Enum):
+    BASIC = auto()
+    SHIP = auto()
+    PLANET_SURFACE = auto()
+
+
 class ForceType(Enum):
     RANDOM = auto()
     CONSTANT = auto()
@@ -204,12 +210,6 @@ class EmitRate:
     behavior: Optional[EmitRateBehavior] = None
 
 
-class MeshShader(Enum):
-    BASIC = auto()
-    SHIP = auto()
-    PLANET_SURFACE = auto()
-
-
 @dataclass
 class Mesh:
     scale: Optional[Vector2f] = None
@@ -275,12 +275,12 @@ class Billboard:
     shader_type: Optional[ShaderType] = None
     anchor: Union[Optional[Anchor], str] = None
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
             return getattr(self, key)
         return None
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any) -> Any:
         if hasattr(self, key):
             setattr(self, key, value)
         return None
@@ -302,12 +302,12 @@ class Particle:
     external_color: Optional[ExternalColor] = None
     camera_offset: Optional[Vector2f] = None
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
             return getattr(self, key)
         return None
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any) -> Any:
         if hasattr(self, key):
             setattr(self, key, value)
         return None
@@ -344,12 +344,12 @@ class Emitter:
     forward_velocity: Optional[Vector2f] = None
     radius_z: Optional[Vector2f] = None
 
-    def __getitem__(self, key: str):
+    def __getitem__(self, key: str) -> Any:
         if hasattr(self, key):
             return getattr(self, key)
         return None
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any) -> Any:
         if hasattr(self, key):
             setattr(self, key, value)
         return None
@@ -409,8 +409,8 @@ class ParticleEffect:
     nodes: List[Node] = field(default_factory=list)
     emitters: List[Emitter] = field(default_factory=list)
     modifiers: List[Modifier] = field(default_factory=list)
-    emitter_to_node_attachments: List[Dict] = field(default_factory=list)
-    modifier_to_emitter_attachments: List[Dict] = field(default_factory=list)
+    emitter_to_node_attachments: List[Attacher] = field(default_factory=list)
+    modifier_to_emitter_attachments: List[Attacher] = field(default_factory=list)
 
 
 @dataclass
@@ -432,7 +432,7 @@ class Texanim:
     frameSize: Optional[List[int]] = None
     frameStride: Optional[List[int]] = None
 
-    def __setitem__(self, key: str, value):
+    def __setitem__(self, key: str, value: Any) -> Any:
         if hasattr(self, key):
             setattr(self, key, value)
         return None

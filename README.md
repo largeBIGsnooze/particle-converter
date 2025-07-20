@@ -4,22 +4,31 @@ This program allows you to convert any Sins of a Solar Empire particle into a fu
 
 ---
 
-Support Nanites
-- `Ability_SupportNanites.particle`
+## Demo
 
-<img src="./screenshot.png">
+The particles on the left are original Sins 1 effects while those on the right are their Sins 2 counterpart converted using this tool.
 
-Kultorask Nano Leech
-- `TitanAbility_NanoLeech_Self.particle`
-
-<img src="./uhmfNqjsm6.gif">
-
-Frigate Explosion - 7
-- `Explosion_Frigate7.particle`
-
-<img src="./7WE6MfAZxr.gif">
-
-Frigte Explosion - 6
+**Explosion Frigate - 6**
 - `Explosion_Frigate6.particle`
 
-<img src="./pjrCMysfln.gif">
+<img src="./demo/8yUoCtT891.gif">
+
+**Explosion CapitalShip - 1**
+- `Explosion_CapitalShip1.particle`
+
+<img src="./demo/SyP1QafLhB.gif">
+
+**Psi Capital Planet Bombing - Hit**
+- `Weapon_PsiCapitalPlanetBombing_Hit.particle`
+
+<img src="./demo/2FD3w4VWjl.gif">
+
+**Support Nanites**
+- `Ability_SupportNanites.particle`
+
+<img src="./demo/screenshot.png">
+
+**Kultorask Nano Leech**
+- `TitanAbility_NanoLeech_Self.particle`
+
+<img src="./demo/uhmfNqjsm6.gif">
