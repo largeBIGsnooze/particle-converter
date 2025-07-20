@@ -1,8 +1,12 @@
-## 🌌 Particle Converter <img src="https://img.shields.io/badge/Windows-10%20&%2011-blue">
+<h2>🌌 Particle Converter
+    <img src="https://img.shields.io/badge/Windows-10%20&%2011-blue">
+    <img src="icon.ico" align="right">
+</h2>
 
-This program allows you to convert any Sins of a Solar Empire `.particle` into a fully compatible Sins 2 particle with a simple drag-and-drop! Also supports `.texanim`
+This program allows you to convert any Sins of a Solar Empire `.particle` into a fully compatible Sins 2 `.particle_effect` with a simple drag-and-drop! Also supports `.texanim`
 
 <img src="./demo/cmd.png">
+<img src="./demo/IfTyxV6Jax.gif">
 
 ---
 
@@ -17,6 +21,7 @@ cd particle-converter
 2. Install the required dependencies:
 ```bash
 python -m pip install --upgrade pip
+
 pip install -r requirements.txt
 ```
 
@@ -58,11 +63,6 @@ The particles on the left are original Sins 1 effects while those on the right a
 - `Weapon_PsiCapitalPlanetBombing_Hit.particle`
 
 <img src="./demo/2FD3w4VWjl.gif">
-
-**Support Nanites**
-- `Ability_SupportNanites.particle`
-
-<img src="./demo/screenshot.png">
 
 **Kultorask Nano Leech**
 - `TitanAbility_NanoLeech_Self.particle`
