@@ -11,23 +11,22 @@ class TestParticle(unittest.TestCase):
         curr_path = os.path.dirname(os.path.abspath(__file__))
         self.particles_path = os.path.join(curr_path, "particles/")
 
-    def assertEmitterEqual(
-        self, parsed: Any, original: Any, original_emitter_type: Any
-    ) -> None:
+    def assertEmitterEqual(self, parsed: Any, original: Any, original_emitter_type: Any) -> None:
         self.assertEqual(original["Name"], parsed["name"])
         self.assertEqual(original["Enabled"], parsed["is_visible"])
         self.assertEqual(
-            [original["EmitRate"]] * 2, parsed["emit_rate"]["primary_emit_rate"]
+            [original["EmitRate"]] * 2,
+            parsed["emit_rate"]["primary_emit_rate"],
         )
-        self.assertEqual(
-            [original["ParticleStartMass"]] * 2, parsed["particle"]["mass"]
-        )
+        self.assertEqual([original["ParticleStartMass"]] * 2, parsed["particle"]["mass"])
         self.assertEqual(original["ParticleStartColor"], parsed["particle"]["color"])
         self.assertEqual(
-            [original["ParticleWidth"]] * 2, parsed["particle"]["billboard"]["width"]
+            [original["ParticleWidth"]] * 2,
+            parsed["particle"]["billboard"]["width"],
         )
         self.assertEqual(
-            [original["ParticleHeight"]] * 2, parsed["particle"]["billboard"]["height"]
+            [original["ParticleHeight"]] * 2,
+            parsed["particle"]["billboard"]["height"],
         )
         if original["MeshName"]:
             self.assertEqual(original["MeshName"], parsed["particle"]["mesh"]["mesh"])
@@ -39,7 +38,8 @@ class TestParticle(unittest.TestCase):
             )
 
         self.assertEqual(
-            [original["ParticleLifeTime"]] * 2, parsed["particle"]["max_duration"]
+            [original["ParticleLifeTime"]] * 2,
+            parsed["particle"]["max_duration"],
         )
         if original_emitter_type == "Point":
             self.assertEqual(
@@ -101,7 +101,12 @@ class TestParticle(unittest.TestCase):
         if {"Point", "Distance"} <= original.keys():
             self.assertEqual(original["Point"], parsed["point"])
             self.assertEqual([original["Distance"]] * 2, parsed["tolerance"])
-        if {"MinWidth", "MaxWidth", "MinHeight", "MaxHeight"} <= original.keys():
+        if {
+            "MinWidth",
+            "MaxWidth",
+            "MinHeight",
+            "MaxHeight",
+        } <= original.keys():
             self.assertEqual(
                 [original["MinWidth"], original["MaxWidth"]],
                 parsed["width_stop"],
@@ -137,9 +142,7 @@ class TestParticle(unittest.TestCase):
                 )
 
     def test_all_particles(self) -> None:
-        for _particle in [
-            f for f in os.listdir(self.particles_path) if f.endswith(".particle")
-        ]:
+        for _particle in [f for f in os.listdir(self.particles_path) if f.endswith(".particle")]:
             with self.subTest(_particle):
                 with io.StringIO() as buf, redirect_stdout(buf):
                     particle = SinsParticle(
@@ -149,22 +152,16 @@ class TestParticle(unittest.TestCase):
                         self.assertNotIn("Failed to parse", buf.getvalue())
 
                 modifiers = particle.file["modifiers"]  # type: ignore
-                collector_modifiers = particle.collector["ParticleSimulation"][
-                    "Affectors"
-                ]
+                collector_modifiers = particle.collector["ParticleSimulation"]["Affectors"]
 
                 emitters = particle.file["emitters"]  # type: ignore
-                collector_emitters = particle.collector["ParticleSimulation"][
-                    "Emitters"
-                ]
+                collector_emitters = particle.collector["ParticleSimulation"]["Emitters"]
 
                 for i, c_modifier in enumerate(
                     [f for f in collector_modifiers if f["AffectorType"] != "Fade"]
                 ):
                     with self.subTest(mod_idx=i, particle=_particle):
-                        self.assertModifierEqual(
-                            modifiers[i], c_modifier["AffectorContents"]
-                        )
+                        self.assertModifierEqual(modifiers[i], c_modifier["AffectorContents"])
                 for i, c_emitter in enumerate(collector_emitters):
                     with self.subTest(emit_idx=i, particle=_particle):
                         self.assertEmitterEqual(

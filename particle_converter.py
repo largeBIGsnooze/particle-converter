@@ -4,10 +4,29 @@ import os
 from typing import Dict, Any, Optional, Union, TextIO, cast
 from dataclasses import is_dataclass
 from enum import Enum
-from src import classes as c
-from colorama import Fore
-import colorama
 import sys
+import colorama
+from colorama import Fore
+
+from src import classes as c
+
+
+class Logger:
+    @staticmethod
+    def print(message: str, color: Any = Fore.WHITE, tab: bool = False) -> None:
+        print(color + ("\t" if tab else "") + f"{message}")
+
+    @staticmethod
+    def info(message: str, color: Any = Fore.CYAN, tab: bool = False) -> None:
+        Logger.print(f"[INFO]: {message}", color, tab)
+
+    @staticmethod
+    def warn(message: str, color: Any = Fore.YELLOW, tab: bool = False) -> None:
+        Logger.print(f"[WARN]: {message}", color, tab)
+
+    @staticmethod
+    def error(message: str, color: Any = Fore.RED, tab: bool = False) -> None:
+        Logger.print(f"[ERROR]: {message}", color, tab)
 
 
 class ParticleException(Exception):
@@ -48,9 +67,7 @@ class SinsParticle:
         self.fade_values: dict[int, Any] = {}
 
     def _depth(self, curr_line: str) -> int:
-        self.depth = (
-            len(curr_line.replace("\t", "    ")) - len(curr_line.lstrip())
-        ) // 4
+        self.depth = (len(curr_line.replace("\t", "    ")) - len(curr_line.lstrip())) // 4
         return self.depth
 
     def _parse_object(self, depth: int, collector: dict[str, Any]) -> None:
@@ -131,7 +148,7 @@ class SinsParticle:
                         self._next()
                         key, value = self._curr_line_items()
                         texanim[key] = value
-                    self.file = texanim.to_texture_animation()
+                    self.file = self.__serialize__(texanim.to_texture_animation())
                 elif self.particle_path.endswith(".particle"):
                     simulation_start = self._next()
 
@@ -141,9 +158,9 @@ class SinsParticle:
                     self.collector[simulation_start].setdefault("Affectors", [])
                     self._parse_object(1, self.collector[simulation_start])
         except SinsParticleException as b:
-            print(b)
+            Logger.error(str(b))
         except Exception as f:
-            print(f"Failed to parse: {f}")
+            Logger.error(f"Failed to parse: {f}")
 
         return self
 
@@ -166,23 +183,28 @@ class SinsParticle:
         else:
             return obj
 
+    def _convert_orientation_matrix(
+        self, Orientation: list[list[float]]
+    ) -> tuple[float, float, float]:
+        m00, m01, m02 = Orientation[0]
+        m10, m11, m12 = Orientation[1]
+        _, _, m22 = Orientation[2]
+
+        if abs(m02) < 1.0:
+            pitch = math.asin(m02)
+            yaw = math.atan2(-m01, m00)
+            roll = math.atan2(-m12, m22)
+        else:
+            pitch = math.pi / 2 if m02 >= 1.0 else -math.pi / 2
+            yaw = math.atan2(m10, m11)
+            roll = 0
+
+        return pitch, roll, yaw
+
     def _build_node_attachment(self, emitter_id: int, emitter: Any) -> None:
         x, y, z = emitter["Position"]
 
-        yaw, pitch, roll = list(
-            map(
-                lambda r: (r - 180) % 360 - 180,
-                [
-                    emitter["RotateAboutUp"],
-                    emitter["RotateAboutForward"],
-                    emitter["RotateAboutCross"],
-                ],
-            )
-        )
-
-        yaw = math.radians(yaw if yaw < 0 else -yaw)
-        pitch = math.radians(-pitch)
-        roll = math.radians(-roll)
+        yaw, pitch, roll = self._convert_orientation_matrix(emitter["Orientation"])
 
         node = c.Node(
             emitter_id,
@@ -214,9 +236,7 @@ class SinsParticle:
                 particle=c.Particle(
                     mesh=c.Mesh(),
                     billboard=c.Billboard(
-                        uber_constants=c.UberConstants(
-                            basic_constants=c.BasicConstants()
-                        )
+                        uber_constants=c.UberConstants(basic_constants=c.BasicConstants())
                     ),
                 ),
             )
@@ -227,37 +247,29 @@ class SinsParticle:
             e_root.emit_rate.primary_emit_rate = c.Vector2f(*[emitter["EmitRate"]] * 2)
 
             if not emitter["HasInfiniteEmitCount"]:
-                e_root.emit_max_particle_count = c.Vector2f(
-                    *[emitter["MaxEmitCount"]] * 2
-                )
+                e_root.emit_max_particle_count = c.Vector2f(*[emitter["MaxEmitCount"]] * 2)
 
-            e_root.particle.billboard.width = c.Vector2f(
-                *[emitter["ParticleWidth"]] * 2
-            )
-            e_root.particle.billboard.height = c.Vector2f(
-                *[emitter["ParticleHeight"]] * 2
-            )
+            e_root.particle.billboard.width = c.Vector2f(*[emitter["ParticleWidth"]] * 2)
+            e_root.particle.billboard.height = c.Vector2f(*[emitter["ParticleHeight"]] * 2)
 
             anchor = c.Anchor.parse(emitter["BillboardAnchor"])
 
             if anchor != c.Anchor.CENTER:
-                e_root.particle.billboard.anchor = anchor.name.lower()
+                e_root.particle.billboard.anchor = anchor
 
-            e_root.particle.max_duration = c.Vector2f(
-                *[emitter["ParticleLifeTime"]] * 2
-            )
+            e_root.particle.max_duration = c.Vector2f(*[emitter["ParticleLifeTime"]] * 2)
 
             if not emitter["HasInfiniteLifeTime"]:
                 e_root.emit_duration = c.Vector2f(*[emitter["TotalLifeTime"]] * 2)
                 if emitter["TotalLifeTime"] <= 0:
-                    print(
-                        Fore.YELLOW
-                        + f"\tWarning: {e_root.name} 'TotalLifeTime' must be > 0 if 'HasInfiniteLifeTime' is FALSE"
+                    Logger.warn(
+                        f"{e_root.name} 'TotalLifeTime' must be > 0 if 'HasInfiniteLifeTime' is FALSE",
+                        tab=True,
                     )
                 elif emitter["TotalLifeTime"] < 0.02:
-                    print(
-                        Fore.CYAN
-                        + f"\tInfo: {e_root.name} 'TotalLifeTime' must be > 0.01 or it won't play. Defaulting to 1.0"
+                    Logger.info(
+                        f"{e_root.name} 'TotalLifeTime' must be > 0.01 or it won't play. Defaulting to 1.0",
+                        tab=True,
                     )
                     e_root.emit_duration = c.Vector2f(1.0, 1.0)
 
@@ -267,11 +279,11 @@ class SinsParticle:
             e_root.particle.mass = c.Vector2f(*[emitter["ParticleStartMass"]] * 2)
 
             if emitter["MeshName"]:
-                e_root.particle.type = "mesh"
+                e_root.particle.type = c.ParticleType.MESH
                 e_root.particle.mesh.shader = c.MeshShader.SHIP
                 e_root.particle.mesh.mesh = emitter["MeshName"]
             else:
-                e_root.particle.type = "billboard"
+                e_root.particle.type = c.ParticleType.BILLBOARD
 
             e_root.is_visible = emitter["Enabled"]
 
@@ -279,13 +291,9 @@ class SinsParticle:
                 if e_root.name in fade_value:
                     fade = self.fade_values[_][e_root.name]
                     if fade["do_fade_in"]:
-                        e_root.particle.fade_in_time = c.Vector2f(
-                            *[fade["fade_in_time"]] * 2
-                        )
+                        e_root.particle.fade_in_time = c.Vector2f(*[fade["fade_in_time"]] * 2)
                     if fade["do_fade_out"]:
-                        e_root.particle.fade_out_time = c.Vector2f(
-                            *[fade["fade_out_time"]] * 2
-                        )
+                        e_root.particle.fade_out_time = c.Vector2f(*[fade["fade_out_time"]] * 2)
 
             if "AngleVariance" in emitter:
                 e_root.angle_variance = c.Vector2f(*[emitter["AngleVariance"]] * 2)
@@ -300,18 +308,20 @@ class SinsParticle:
                     emitter["ParticleMaxStartAngularSpeed"],
                 )
 
-            rotation_type = c.RotationType.parse(emitter["RotationDirectionType"])
             r = e_root.particle.billboard.rotation_speed
+
+            rotation_type = c.RotationType.parse(emitter["RotationDirectionType"])
             if rotation_type == c.RotationType.RANDOM:
-                r = c.Vector2f(
-                    -max(abs(r.min), abs(r.max)), max(abs(r.min), abs(r.max))
-                )
+                r = c.Vector2f(-max(abs(r.min), abs(r.max)), max(abs(r.min), abs(r.max)))
             elif rotation_type == c.RotationType.COUNTER_CLOCKWISE:
                 r = c.Vector2f(
-                    max(-abs(r.min), -abs(r.max)), min(-abs(r.min), -abs(r.max))
+                    min(-abs(r.min), -abs(r.max)),
+                    max(-abs(r.min), -abs(r.max)),
                 )
             elif rotation_type == c.RotationType.CLOCKWISE:
-                r = c.Vector2f(abs(r.min), abs(r.max))
+                r = c.Vector2f(r.min, r.max)
+
+            e_root.particle.billboard.rotation_speed = r
 
             if e_root.type == c.EmitterType.POINT:
                 e_root.forward_velocity = c.Vector2f(
@@ -322,31 +332,21 @@ class SinsParticle:
             for i, texture in enumerate(emitter["Textures"]):
                 e_root.particle.billboard[f"texture_{i}"] = texture
 
-            e_root.particle.billboard.texture_animation = emitter[
-                "textureAnimationName"
-            ]
+            e_root.particle.billboard.texture_animation = emitter["textureAnimationName"]
 
             texture_animation_first_frame = c.TextureAnimationFirstFrames.parse(
-                SinsParticle._normalize_animation_spawn_type(
-                    emitter["textureAnimationSpawnType"]
-                )
+                SinsParticle._normalize_animation_spawn_type(emitter["textureAnimationSpawnType"])
             )
 
-            e_root.particle.billboard.texture_animation_first_frame = (
-                texture_animation_first_frame
-            )
+            e_root.particle.billboard.texture_animation_first_frame = texture_animation_first_frame
             e_root.particle.billboard.texture_animation_fps = c.Vector2f(
                 *[emitter["textureAnimationOnParticleFPS"]] * 2
             )
 
             if e_root.type == c.EmitterType.RING:
 
-                e_root.radius_x = c.Vector2f(
-                    emitter["RingRadiusXMin"], emitter["RingRadiusXMax"]
-                )
-                e_root.radius_y = c.Vector2f(
-                    emitter["RingRadiusYMin"], emitter["RingRadiusYMax"]
-                )
+                e_root.radius_x = c.Vector2f(emitter["RingRadiusXMin"], emitter["RingRadiusXMax"])
+                e_root.radius_y = c.Vector2f(emitter["RingRadiusYMin"], emitter["RingRadiusYMax"])
                 e_root.angle_range = c.Vector2f(
                     emitter["SpawnAngleStart"], emitter["SpawnAngleStop"]
                 )
@@ -410,16 +410,12 @@ class SinsParticle:
             m_root: c.Modifier = c.Modifier(
                 id=modifier_id,
                 name=modifier["Name"] or affector_type,
-                type=c.ModifierType.parse(
-                    SinsParticle._normalize_affector_type(affector_type)
-                ),
+                type=c.ModifierType.parse(SinsParticle._normalize_affector_type(affector_type)),
             )
 
             if m_root.type == c.ModifierType.DRAG:
                 m_root.coefficient_generator = c.CoefficientGenerator()
-                m_root.coefficient_generator.range = c.Vector2f(
-                    *[modifier["DragCoefficient"]] * 2
-                )
+                m_root.coefficient_generator.range = c.Vector2f(*[modifier["DragCoefficient"]] * 2)
             if m_root.type == c.ModifierType.ROTATE_ABOUT_AXIS:
                 m_root.type = c.ModifierType.ROTATE
                 m_root.axis_of_rotation = c.Vector3f(*modifier["AxisOfRotation"])
@@ -436,55 +432,51 @@ class SinsParticle:
                 m_root.end_color = modifier["EndColor"]
                 m_root.will_oscillate = True
                 m_root.change_duration = c.Vector2f(*[modifier["TransitionPeriod"]] * 2)
-                m_root.change_duration_context = (
-                    c.ChangeDurationContext.PARTICLE_TIME_ELAPSED
-                )
+                m_root.change_duration_context = c.ChangeDurationContext.PARTICLE_TIME_ELAPSED
             if m_root.type == c.ModifierType.SIZE_OSCILLATOR:
                 m_root.type = c.ModifierType.SIZE
-                m_root.width_stop = c.Vector2f(
-                    modifier["BeginSizeX"], modifier["EndSizeX"]
+                bx, ex, by, ey = (
+                    modifier["BeginSizeX"],
+                    modifier["EndSizeX"],
+                    modifier["BeginSizeY"],
+                    modifier["EndSizeY"],
                 )
-                m_root.height_stop = c.Vector2f(
-                    modifier["BeginSizeY"], modifier["EndSizeY"]
-                )
+                if bx > ex:
+                    ex, bx = bx, ex
+                if by > ey:
+                    ey, by = by, ey
+                m_root.width_stop = c.Vector2f(bx, ex)
+                m_root.height_stop = c.Vector2f(by, ey)
             if m_root.type == c.ModifierType.SIZE:
-                if {"WidthInflateRate", "HeightInflateRate"} <= modifier.keys():
-                    m_root.width_change_rate = c.Vector2f(
-                        *[modifier["WidthInflateRate"]] * 2
-                    )
-                    m_root.height_change_rate = c.Vector2f(
-                        *[modifier["HeightInflateRate"]] * 2
-                    )
+                if {
+                    "WidthInflateRate",
+                    "HeightInflateRate",
+                } <= modifier.keys():
+                    m_root.width_change_rate = c.Vector2f(*[modifier["WidthInflateRate"]] * 2)
+                    m_root.height_change_rate = c.Vector2f(*[modifier["HeightInflateRate"]] * 2)
                 else:
                     m_root.width_change_rate = c.Vector2f(100, 100)
                     m_root.height_change_rate = c.Vector2f(100, 100)
             if m_root.type == c.ModifierType.LINEAR_BOUNDED_INFLATE:
                 m_root.type = c.ModifierType.SIZE
-                m_root.width_stop = c.Vector2f(
-                    modifier["MinWidth"], modifier["MaxWidth"]
-                )
-                m_root.height_stop = c.Vector2f(
-                    modifier["MinHeight"], modifier["MaxHeight"]
-                )
+                m_root.width_stop = c.Vector2f(modifier["MinWidth"], modifier["MaxWidth"])
+                m_root.height_stop = c.Vector2f(modifier["MinHeight"], modifier["MaxHeight"])
             if m_root.type == c.ModifierType.LINEAR_FORCE_IN_DIRECTION:
                 m_root.type = c.ModifierType.PUSH
                 m_root.direction = c.Vector3f(*modifier["Direction"])
-                m_root.force = c.ModifierForce()
-                m_root.force.range = c.Vector2f(
-                    modifier["MinForce"], modifier["MaxForce"]
-                )
             if m_root.type == c.ModifierType.PUSH:
                 m_root.force = c.ModifierForce()
-                m_root.force.type = c.ForceType.CONSTANT
-                m_root.force.range = c.Vector2f(
-                    modifier["MinForce"] / 25, modifier["MaxForce"] / 25
-                )
+                m_root.force.type = c.ForceType.RANDOM
+                low, high = modifier["MinForce"], modifier["MaxForce"]
+                if low > high:
+                    high, low = low, high
+                m_root.force.range = c.Vector2f(low / 25, high / 25)
                 m_root.op = c.Op.TO_POINT_IN_EFFECT_SPACE  # is it?
                 if "Point" in modifier:
                     m_root.point = c.Vector3f(*modifier["Point"])
             if m_root.type == c.ModifierType.JITTER:
                 m_root.force = c.ModifierForce()
-                m_root.force.type = c.ForceType.RANDOM
+                m_root.force.type = c.ForceType.CONSTANT
                 m_root.force.range = c.Vector2f(*[modifier["JitterForce"]] * 2)
                 m_root.op = c.Op.RANDOM_JITTER
                 if modifier["UseCommonForce"]:
@@ -508,9 +500,7 @@ class SinsParticle:
 
     def _build_modifier_to_emitter_attachments(self) -> None:
         fade_counter = 0
-        for attacher_id, affector in enumerate(
-            self.collector["ParticleSimulation"]["Affectors"]
-        ):
+        for attacher_id, affector in enumerate(self.collector["ParticleSimulation"]["Affectors"]):
             contents = affector["AffectorContents"]
 
             if "AttachedEmitters" in contents:
@@ -528,13 +518,10 @@ class SinsParticle:
                     for attachee_id, emitter in enumerate(
                         self.collector["ParticleSimulation"]["Emitters"]
                     ):
-                        if (
-                            emitter["EmitterContents"]["Name"] == attached
-                            and not is_fade_affector
-                        ):
+                        if emitter["EmitterContents"]["Name"] == attached and not is_fade_affector:
                             self.modifier_to_emitter_attachments.append(
                                 c.Attacher(attacher_id, attachee_id)
-                        )
+                            )
 
     def _next_line(self) -> str:
         self.pos = self.f.tell()
@@ -552,7 +539,7 @@ class SinsParticle:
                 value = " ".join(value).replace(",", "").split()
                 value = list(
                     map(
-                        lambda x: int(float(x)) if float(x).is_integer() else float(x),
+                        lambda x: (int(float(x)) if float(x).is_integer() else float(x)),
                         value,
                     )
                 )
@@ -601,9 +588,7 @@ class SinsParticle:
                 emitter.setdefault("Textures", [])
                 for _ in range(int(value)):
                     self.curr_line = self._next()
-                    texture_name = SinsParticle._normalize_texture_name(
-                        self._curr_line_items()[1]
-                    )
+                    texture_name = SinsParticle._normalize_texture_name(self._curr_line_items()[1])
                     if texture_name != "":
                         texture_name += "_clr"
                     emitter["Textures"].append(texture_name)
@@ -618,9 +603,7 @@ class SinsParticle:
 
             emitter[key] = value
             if "textureAnimationName" in self.curr_line and value:
-                emitter["textureAnimationName"] = (
-                    f"{value.lower().split('.')[0]}.texture_animation"
-                )
+                emitter["textureAnimationName"] = f"{value.lower().split('.')[0]}.texture_animation"
 
             self.curr_line = self._next()
 
@@ -669,9 +652,7 @@ class SinsParticle:
             self.line_number += 1
         return self.curr_line
 
-    def save(
-        self, save_path: str = "examples/Ability_CombatNanites.particle_effect"
-    ) -> None:
+    def save(self, save_path: str = "examples/Ability_CombatNanites.particle_effect") -> None:
         if self.file:
             with open(save_path, "w") as f:
                 json.dump(self.file, f, indent=2)
@@ -683,7 +664,7 @@ if __name__ == "__main__":
         exe_path = os.path.dirname(sys.executable)
         out_path = os.path.join(exe_path, "out")
         if len(sys.argv) < 2:
-            print(Fore.RED + "Drop a Sins 1 .particle or a .texanim file\n")
+            Logger.error("Drop a Sins 1 .particle or a .texanim file\n")
             os.system("pause")
             sys.exit(1)
 
@@ -700,18 +681,18 @@ if __name__ == "__main__":
                 target_path = os.path.join(out_path, "texture_animations")
                 extension = ".texture_animation"
             else:
-                print(Fore.WHITE + f"Skipping: {name}")
+                Logger.info(f"Skipping: {name}", Fore.WHITE)
                 continue
 
-            print(
-                Fore.WHITE
-                + f"{file_name} {Fore.GREEN }→{Fore.WHITE} {name + extension}"
+            Logger.print(
+                f"{file_name} {Fore.GREEN }→{Fore.WHITE} {name + extension}",
+                Fore.WHITE,
             )
             os.makedirs(target_path, exist_ok=True)
             parser = SinsParticle(particle_path=file).parse()
             parser.save(os.path.join(target_path, name + extension))
 
-        print(Fore.GREEN + "-" * 50 + "Finished" + "-" * 50)
+        Logger.print("-" * 50 + "Finished" + "-" * 50, Fore.GREEN)
         os.system("pause")
     except Exception as e:
         input(str(e))
