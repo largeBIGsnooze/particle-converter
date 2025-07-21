@@ -1,8 +1,9 @@
 # -*- mode: python ; coding: utf-8 -*-
 
+__version__ = "1.4.0"
 
 a = Analysis(
-    ['particle_converter.py'],
+    ["particle_converter.py"],
     pathex=[],
     binaries=[],
     datas=[],
@@ -25,7 +26,7 @@ exe = EXE(
     a.binaries,
     a.datas,
     [],
-    name='ParticleConverter',
+    name=f"ParticleConverter v{__version__}",
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
