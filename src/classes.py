@@ -28,9 +28,11 @@ class EmitterType(Enum):
     def parse(cls, emitter_type: str) -> "EmitterType":
         return cls[str(emitter_type)]
 
+
 class ChangeDurationContext(Enum):
     PARTICLE_TIME_ELAPSED = auto()
     MODIFIER_TIME_ELAPSED = auto()
+
 
 class EmitRateBehavior(Enum):
     SQUARE_WAVE = auto()
@@ -132,6 +134,9 @@ class Op(Enum):
     TO_POINT_IN_EFFECT_SPACE = auto()
     # Kill
     NEAR_POINT = auto()
+    # Rotate
+    TO_FACE_DIRECTION = auto()
+    AROUND_AXIS = auto()
 
 
 class MeshShader(Enum):
@@ -167,7 +172,10 @@ class Attacher:
     attachee_id: int
 
     def __serialize__(self) -> dict[str, int]:
-        return {"attacher_id": self.attacher_id, "attachee_id": self.attachee_id}
+        return {
+            "attacher_id": self.attacher_id,
+            "attachee_id": self.attachee_id,
+        }
 
 
 @dataclass
@@ -258,8 +266,12 @@ class Billboard:
     texture_1: Optional[str] = None
     texture_animation_fps: Optional[Vector2f] = None
     texture_animation: Optional[str] = None
-    texture_animation_first_frame: Optional[TextureAnimationFirstFrames] = TextureAnimationFirstFrames.RANDOM
-    texture_animation_next_frame: Optional[TextureAnimationNextFrames] = TextureAnimationNextFrames.RANDOM
+    texture_animation_first_frame: Optional[TextureAnimationFirstFrames] = (
+        TextureAnimationFirstFrames.RANDOM
+    )
+    texture_animation_next_frame: Optional[TextureAnimationNextFrames] = (
+        TextureAnimationNextFrames.RANDOM
+    )
     initial_distortion_scalar: Optional[Vector2f] = None
     random_flip_texture_vertical_chance: Optional[float] = None
     random_flip_texture_horizontal_chance: Optional[float] = None
