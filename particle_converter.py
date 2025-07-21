@@ -423,6 +423,7 @@ class SinsParticle:
             if m_root.type == c.ModifierType.ROTATE_ABOUT_AXIS:
                 m_root.type = c.ModifierType.ROTATE
                 m_root.axis_of_rotation = c.Vector3f(*modifier["AxisOfRotation"])
+                m_root.op = c.Op.AROUND_AXIS
                 m_root.axis_origin = c.Vector3f(*modifier["AxisOrigin"])
                 m_root.radius = c.Vector2f(*[modifier["Radius"]] * 2)
                 m_root.angular_velocity = c.Vector2f(*[modifier["AngularVelocity"]] * 2)
