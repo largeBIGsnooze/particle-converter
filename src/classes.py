@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass, field
-from typing import List, Dict, Optional, Union, Any
+from typing import List, Optional, Union, Any
 
 
 class ParticleFacing(Enum):

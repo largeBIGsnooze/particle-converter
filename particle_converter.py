@@ -5,45 +5,16 @@ from typing import Dict, Any, Optional, Union, TextIO, cast
 from dataclasses import is_dataclass
 from enum import Enum
 import sys
+
 import colorama
 from colorama import Fore
 
 from src import classes as c
-
-
-class Logger:
-    @staticmethod
-    def print(message: str, color: Any = Fore.WHITE, tab: bool = False) -> None:
-        print(color + ("\t" if tab else "") + f"{message}")
-
-    @staticmethod
-    def info(message: str, color: Any = Fore.CYAN, tab: bool = False) -> None:
-        Logger.print(f"[INFO]: {message}", color, tab)
-
-    @staticmethod
-    def warn(message: str, color: Any = Fore.YELLOW, tab: bool = False) -> None:
-        Logger.print(f"[WARN]: {message}", color, tab)
-
-    @staticmethod
-    def error(message: str, color: Any = Fore.RED, tab: bool = False) -> None:
-        Logger.print(f"[ERROR]: {message}", color, tab)
-
-
-class ParticleException(Exception):
-    def __init__(self, message: str):
-        super().__init__(Fore.RED + f"Failed to parse.\n{message}")
-
-
-class SinsParticleFormatException(ParticleException):
-    def __init__(self, prop: str, line_number: int):
-        super().__init__(f'Expected "{prop}" in line: {line_number}\n')
-        self.prop = prop
-        self.line_number = line_number
-
-
-class SinsParticleException(ParticleException):
-    def __init__(self, message: str):
-        super().__init__(message)
+from src.texture import TextureProcessor
+from src.exceptions import *
+from src.logger import Logger
+from src.texconv import Texconv
+from src.config import Config
 
 
 class SinsParticle:
@@ -56,7 +27,6 @@ class SinsParticle:
         self.collector: dict[str, Any] = {}
         self.depth: int = 0
 
-        self.particle_path: str = particle_path
         self.file: Optional[Union[c.TextureAnimation, c.ParticleEffect]] = None
 
         self.modifiers: list[c.Modifier] = []
@@ -65,6 +35,11 @@ class SinsParticle:
         self.modifier_to_emitter_attachments: list[c.Attacher] = []
         self.emitter_to_node_attachments: list[c.Attacher] = []
         self.fade_values: dict[int, Any] = {}
+
+        self.config = Config(os.path.dirname(sys.executable)).create().read()
+        self.particle_path = particle_path
+
+        self.is_texconv_present = Texconv(os.path.dirname(sys.executable)).exists()
 
     def _depth(self, curr_line: str) -> int:
         self.depth = (len(curr_line.replace("\t", "    ")) - len(curr_line.lstrip())) // 4
@@ -129,7 +104,7 @@ class SinsParticle:
                         "Convert it to TXT format before running this program."
                     )
 
-            with open(self.particle_path, "r", encoding="utf-8") as f:  # type: ignore
+            with open(self.particle_path, "r", encoding="utf-8") as f:
                 self.f = cast(TextIO, f)
                 self.f.seek(0)
                 self.pos = self.f.tell()
@@ -157,10 +132,8 @@ class SinsParticle:
                     self.collector[simulation_start].setdefault("Emitters", [])
                     self.collector[simulation_start].setdefault("Affectors", [])
                     self._parse_object(1, self.collector[simulation_start])
-        except SinsParticleException as b:
+        except ParticleException as b:
             Logger.error(str(b))
-        except Exception as f:
-            Logger.error(f"Failed to parse: {f}")
 
         return self
 
@@ -184,11 +157,11 @@ class SinsParticle:
             return obj
 
     def _convert_orientation_matrix(
-        self, Orientation: list[list[float]]
+        self, orientation: list[list[float]]
     ) -> tuple[float, float, float]:
-        m00, m01, m02 = Orientation[0]
-        m10, m11, m12 = Orientation[1]
-        _, _, m22 = Orientation[2]
+        m00, m01, m02 = orientation[0]
+        m10, m11, m12 = orientation[1]
+        _, _, m22 = orientation[2]
 
         if abs(m02) < 1.0:
             pitch = math.asin(m02)
@@ -263,13 +236,11 @@ class SinsParticle:
                 e_root.emit_duration = c.Vector2f(*[emitter["TotalLifeTime"]] * 2)
                 if emitter["TotalLifeTime"] <= 0:
                     Logger.warn(
-                        f"{e_root.name} 'TotalLifeTime' must be > 0 if 'HasInfiniteLifeTime' is FALSE",
-                        tab=True,
+                        f"{e_root.name} 'TotalLifeTime' must be > 0 if 'HasInfiniteLifeTime' is FALSE"
                     )
                 elif emitter["TotalLifeTime"] < 0.02:
                     Logger.info(
-                        f"{e_root.name} 'TotalLifeTime' must be > 0.01 or it won't play. Defaulting to 1.0",
-                        tab=True,
+                        f"{e_root.name} 'TotalLifeTime' must be > 0.01 or it won't play. Defaulting to 1.0"
                     )
                     e_root.emit_duration = c.Vector2f(1.0, 1.0)
 
@@ -330,7 +301,8 @@ class SinsParticle:
                 )
 
             for i, texture in enumerate(emitter["Textures"]):
-                e_root.particle.billboard[f"texture_{i}"] = texture
+                e_root.particle.billboard[f"texture_{i}"] = texture["id"]
+                TextureProcessor(self.config, self.is_texconv_present).convert(texture["source"])
 
             e_root.particle.billboard.texture_animation = emitter["textureAnimationName"]
 
@@ -555,13 +527,10 @@ class SinsParticle:
         return value
 
     @staticmethod
-    def _normalize_texture_name(texture_name: str) -> str:
-        return os.path.basename(
-            texture_name.strip('"')
-            .lower()
-            .replace(".tga", "")
-            .replace(".dds", "")
-            .replace("-", "_")
+    def _normalize_texture_name(texture_name: str) -> tuple[str, str]:
+        source_name = os.path.basename(texture_name.strip('"'))
+        return source_name, source_name.lower().replace(".tga", "").replace(".dds", "").replace(
+            "-", "_"
         )
 
     def _parse_emitter(self, emitter: Dict[str, Any], depth: int) -> None:
@@ -588,10 +557,10 @@ class SinsParticle:
                 emitter.setdefault("Textures", [])
                 for _ in range(int(value)):
                     self.curr_line = self._next()
-                    texture_name = SinsParticle._normalize_texture_name(self._curr_line_items()[1])
-                    if texture_name != "":
-                        texture_name += "_clr"
-                    emitter["Textures"].append(texture_name)
+                    source, _id = SinsParticle._normalize_texture_name(self._curr_line_items()[1])
+                    if _id != "":
+                        _id += "_clr"
+                    emitter["Textures"].append({"id": _id, "source": source})
 
             if "numAttachedEmitters" in self.curr_line and int(value) != 0:
                 emitter.setdefault("AttachedEmitters", [])
@@ -663,6 +632,7 @@ if __name__ == "__main__":
     try:
         exe_path = os.path.dirname(sys.executable)
         out_path = os.path.join(exe_path, "out")
+
         if len(sys.argv) < 2:
             Logger.error("Drop a Sins 1 .particle or a .texanim file\n")
             os.system("pause")
@@ -689,7 +659,7 @@ if __name__ == "__main__":
                 Fore.WHITE,
             )
             os.makedirs(target_path, exist_ok=True)
-            parser = SinsParticle(particle_path=file).parse()
+            parser = SinsParticle(file).parse()
             parser.save(os.path.join(target_path, name + extension))
 
         Logger.print("-" * 50 + "Finished" + "-" * 50, Fore.GREEN)

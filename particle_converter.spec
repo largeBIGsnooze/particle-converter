@@ -1,6 +1,6 @@
 # -*- mode: python ; coding: utf-8 -*-
 
-__version__ = "1.4.0"
+__version__ = "1.6.0"
 
 a = Analysis(
     ["particle_converter.py"],
